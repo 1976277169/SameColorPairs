@@ -9,8 +9,9 @@
 #include <random>
 #include <utility>
 #include <cassert>
+#include <chrono>
 
-#define PRINT_DEBUG 1
+#define PRINT_DEBUG 0
 #define MAX_NUMBER_OF_COLORS 6
 
 using namespace std;
@@ -57,6 +58,7 @@ class SameColorPairs {
 public:
   random_device m_rd;
   mt19937 m_random_engine;
+  uniform_int_distribution<> m_coin_dist;
 
   int m_r;
   int m_c;
@@ -95,6 +97,8 @@ public:
 SameColorPairs::SameColorPairs() {
 
   m_random_engine.seed(m_rd());
+  m_coin_dist = uniform_int_distribution<>(0, 1);
+
 
   m_r = 0;
   m_c = 0;
@@ -130,7 +134,7 @@ vector<vector<int>> SameColorPairs::set_m_board(vector<string> &board) {
 
 void SameColorPairs::update_solution(string &s) {
 
-  m_number_of_removed_tiles++;
+  m_number_of_removed_tiles = m_number_of_removed_tiles + 2;
   m_solution.push_back(s);
 
 }
@@ -277,7 +281,9 @@ void SameColorPairs::print_remaining_points_on_the_board() {
     }
   }
 
-  fprintf(stderr, "Number of colors: %2d\n", m_number_of_colors);
+  #if PRINT_DEBUG == 1
+    fprintf(stderr, "Number of colors: %2d\n", m_number_of_colors);
+  #endif
 }
 
 
@@ -287,6 +293,9 @@ pair<int, int> SameColorPairs::draw_random_remaining_tile() {
   int chosen_color = color_dist(m_random_engine);
 
   int number_of_tiles_of_chosen_color = m_remaining_points_on_the_board[chosen_color].size();
+
+  if (number_of_tiles_of_chosen_color == 0)
+    return make_pair(-1, -1);
 
   uniform_int_distribution<> tile_dist(0, number_of_tiles_of_chosen_color - 1);
   int chosen_tile = tile_dist(m_random_engine);
@@ -304,14 +313,15 @@ bool SameColorPairs::check_bounding_box(int &r1, int &c1, int &r2, int &c2, int 
 
     for(int i = r1; i <= r2; i++) {
       for(int j = c1; j <= c2; j++) {
-        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
-          continue;
-
         if(m_board[i][j] == -1)
             continue;
 
         if(m_board[i][j] != color)
           return false;
+
+        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
+          continue;
+
       }
     }
     return true;
@@ -322,14 +332,14 @@ bool SameColorPairs::check_bounding_box(int &r1, int &c1, int &r2, int &c2, int 
 
     for(int i = r2; i <= r1; i++) {
       for(int j = c2; j <= c1; j++) {
-        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
-          continue;
-
         if(m_board[i][j] == -1)
             continue;
 
         if(m_board[i][j] != color)
           return false;
+
+        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
+          continue;
       }
     }
     return true;
@@ -340,14 +350,14 @@ bool SameColorPairs::check_bounding_box(int &r1, int &c1, int &r2, int &c2, int 
 
     for(int i = r2; i <= r1; i++) {
       for(int j = c1; j <= c2; j++) {
-        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
-          continue;
-
         if(m_board[i][j] == -1)
             continue;
 
         if(m_board[i][j] != color)
           return false;
+
+        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
+          continue;
       }
     }
     return true;
@@ -358,14 +368,14 @@ bool SameColorPairs::check_bounding_box(int &r1, int &c1, int &r2, int &c2, int 
 
     for(int i = r1; i <= r2; i++) {
       for(int j = c2; j <= c1; j++) {
-        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
-          continue;
-
         if(m_board[i][j] == -1)
             continue;
 
         if(m_board[i][j] != color)
           return false;
+
+        if( ((i == r1) && (j == c1)) || ((i == r2) && (j == c2)) )
+          continue;
       }
     }
     return true;
@@ -420,13 +430,12 @@ void SameColorPairs::search_tile_neighbourhood(pair<int, int> &one_of_the_remain
 
         bool bounding_box_status = check_bounding_box(r1, c1, i, j, tile_color);
 
-        uniform_int_distribution<> coin_dist(0, 1);
 
         #if PRINT_DEBUG == 1
           fprintf(stderr, "Bounding box status: %d\n", bounding_box_status);
         #endif
 
-        if (bounding_box_status == true && coin_dist(m_random_engine) == 1) {
+        if (bounding_box_status == true && m_coin_dist(m_random_engine) == 1) {
           #if PRINT_DEBUG == 1
             fprintf(stderr, "Neighbouring tile accepted!\n");
           #endif
@@ -457,13 +466,25 @@ void SameColorPairs::search_tile_neighbourhood(pair<int, int> &one_of_the_remain
 
 void SameColorPairs::loop_random_remove() {
 
-  for(int i = 0; i < 1000; i++) {
+  for(int i = 0; i < 1000000; i++) {
+
+    #if PRINT_DEBUG == 1
+      fprintf(stderr, "Total number of tiles: %d\n", m_total_number_of_tiles);
+      fprintf(stderr, "Total number of removed tiles: %d\n", m_number_of_removed_tiles);
+    #endif
+
     pair<int, int> one_of_the_remaining_tiles = draw_random_remaining_tile();
 
-    fprintf(stderr, "Chosen color: %d, chosen tile: %d\n", one_of_the_remaining_tiles.first,
-                                                           one_of_the_remaining_tiles.second);
+    if (one_of_the_remaining_tiles.first == -1)
+      continue;
 
-    int neighbourhood_size = 5;
+    #if PRINT_DEBUG == 1
+      fprintf(stderr, "Chosen color: %d, chosen tile: %d\n", one_of_the_remaining_tiles.first,
+                                                             one_of_the_remaining_tiles.second);
+    #endif
+
+
+    int neighbourhood_size = 10;
     search_tile_neighbourhood(one_of_the_remaining_tiles, neighbourhood_size);
   }
 
@@ -471,6 +492,9 @@ void SameColorPairs::loop_random_remove() {
 
 
 vector<string> SameColorPairs::removePairs(vector<string> board) {
+
+  chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
 
   m_board = set_m_board(board);
 
@@ -481,6 +505,11 @@ vector<string> SameColorPairs::removePairs(vector<string> board) {
   print_remaining_points_on_the_board();
 
   loop_random_remove();
+
+  end = chrono::system_clock::now();
+  chrono::duration<double> elapsed_seconds = end - start;
+
+  cerr << "elapsed time (removePairs): " << elapsed_seconds.count() << " sec" << endl;
 
   return m_solution;
 
