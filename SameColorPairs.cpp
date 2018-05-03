@@ -409,13 +409,68 @@ void SameColorPairs::search_tile_neighbourhood(pair<int, int> &one_of_the_remain
     fprintf(stderr, "Searching neighbourhood of tile (r x c): (%2d x %2d)\n", r1, c1);
   #endif
 
+  int r_min = r1 - neighbourhood_size;
+  int r_max = r1 + neighbourhood_size;
+  int c_min = c1 - neighbourhood_size;
+  int c_max = c1 + neighbourhood_size;
+
+  int left = c1 - 1;
+  int right = c1 + 1;
+  int up = r1 - 1;
+  int down = r1 + 1;
+
+  if(left >= 0) {
+    if(m_board[r1][left] != tile_color && m_board[r1][left] != -1) {
+      c_min = c1;
+    }
+  }
+
+  if(right < m_c) {
+    if(m_board[r1][right] != tile_color && m_board[r1][right] != -1) {
+      c_max = c1;
+    }
+  }
+
+  if(up >= 0) {
+    if(m_board[up][c1] != tile_color && m_board[up][c1] != -1) {
+      r_min = r1;
+    }
+  }
+
+  if(down < m_r) {
+    if(m_board[down][c1] != tile_color && m_board[down][c1] != -1) {
+      r_max = r1;
+    }
+  }
+
+  if(r_min < 0)
+    r_min = 0;
+
+  if(r_max >= m_r)
+    r_max = m_r - 1;
+
+  if(c_min < 0)
+    c_min = 0;
+
+  if(c_max >= m_c)
+    c_max = m_c - 1;
+
+  #if PRINT_DEBUG == 1
+    fprintf(stderr, "r_min: %d r_max: %d c_min: %d c_max: %d\n", r_min, r_max, c_min, c_max);
+  #endif
+
+  if(c_min == c1 && c_max == c1 && r_min == r1 && r_max == r1)
+    return;
+
   // Search the tile's neighbourhood for tiles of the same color
   // and remove if possible.
-  for(int i = r1 - neighbourhood_size; i <= r1 + neighbourhood_size; i++) {
+  for(int i = r_min; i <= r_max; i++) {
+
     if( (i < 0) || (i >= m_r) )
       continue;
 
-    for(int j = c1 - neighbourhood_size; j <= c1 + neighbourhood_size; j++) {
+    for(int j = c_min; j <= c_max; j++) {
+
       if( (j < 0) || (j >= m_c) )
         continue;
 
@@ -483,8 +538,15 @@ void SameColorPairs::loop_random_remove() {
                                                              one_of_the_remaining_tiles.second);
     #endif
 
+    int neighbourhood_size;
+    if (i <= 500000)
+      neighbourhood_size = 2;
+    else if (i > 500000 && i <= 750000)
+      neighbourhood_size = 5;
+    else if (i > 750000)
+      neighbourhood_size = 20;
 
-    int neighbourhood_size = 10;
+    neighbourhood_size = 10;
     search_tile_neighbourhood(one_of_the_remaining_tiles, neighbourhood_size);
   }
 
@@ -512,9 +574,6 @@ vector<string> SameColorPairs::removePairs(vector<string> board) {
   cerr << "elapsed time (removePairs): " << elapsed_seconds.count() << " sec" << endl;
 
   return m_solution;
-
-  //vector<string> ret;
-  //return ret;
 
 }
 
